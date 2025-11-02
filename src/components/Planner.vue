@@ -2,7 +2,7 @@
   <div class="container">
     <header>
       <div>
-        <h1>Planner Fitness — Emagrecimento & Massa</h1>
+        <h1>Planner Fit</h1>
         <p class="lead">
           Treinos: 06:30 (Seg–Sex) • Cardio sábado (tarde/noite)
         </p>
@@ -71,7 +71,7 @@
 
         <div style="margin-top: 8px">
           <label v-for="(v, key) in checks" :key="key" class="checkbox">
-            <input type="checkbox" v-model="checks[key]" /> {{ labels[key] }}
+            <input type="checkbox" :v-model="v" /> {{ labels[key] }}
           </label>
         </div>
       </section>
@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive } from "vue";
 
 interface Meal {
   id: string;
