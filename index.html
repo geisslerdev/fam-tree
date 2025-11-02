@@ -1,13 +1,524 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + Vue + TS</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Planner Fitness — PWA (Vue 3)</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme color -->
+    <meta name="theme-color" content="#061018" />
+
+    <!-- Icons (replace with your images in /icons/) -->
+    <link rel="icon" href="/icons/icon-192.png" />
+
+    <style>
+      /* minimal dark UI - mobile-first */
+      :root {
+        --bg: #07101a;
+        --card: #0e1722;
+        --muted: #9aa6b2;
+        --accent: #2dd4bf;
+        --accent2: #60a5fa;
+        --text: #e6eef6;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial;
+        background: linear-gradient(180deg, #041019 0%, #071220 100%);
+        color: var(--text);
+      }
+      .container {
+        max-width: 920px;
+        margin: 14px auto;
+        padding: 14px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+      p.lead {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .card {
+        background: linear-gradient(180deg, var(--card), #081021);
+        padding: 12px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(2, 6, 23, 0.6);
+      }
+      .meal {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        margin-bottom: 8px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .macros {
+        font-family: monospace;
+        color: var(--accent);
+        font-size: 13px;
+      }
+      .btn {
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        padding: 8px 10px;
+        border-radius: 8px;
+        color: #042024;
+        font-weight: 700;
+        border: 0;
+        cursor: pointer;
+      }
+      .small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .workout {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .ex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .checkbox {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      footer {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (min-width: 720px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <div id="app" class="container">
+      <header>
+        <div>
+          <h1>Planner Fitness — Emagrecimento & Massa</h1>
+          <p class="lead">
+            Treinos: 06:30 (Seg–Sex) • Cardio sábado (tarde/noite)
+          </p>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <button @click="exportJSON" class="btn">Exportar JSON</button>
+        </div>
+      </header>
+
+      <main class="grid">
+        <!-- Meals card -->
+        <section class="card">
+          <strong>Resumo Diário • 1800 kcal</strong>
+          <p class="muted">
+            Macros aproximados: Proteína 150g • Carboidrato 160g • Gordura 60g
+          </p>
+          <hr style="border-color: rgba(255, 255, 255, 0.04); margin: 10px 0" />
+          <div v-for="meal in meals" :key="meal.id" class="meal">
+            <div>
+              <strong>{{ meal.title }}</strong>
+              <div class="small">{{ meal.items.join(' • ') }}</div>
+            </div>
+            <div style="text-align: right">
+              <div class="macros">
+                P {{ meal.P }}g • C {{ meal.C }}g • F {{ meal.F }}g
+              </div>
+              <div class="small">{{ meal.kcal }} kcal</div>
+            </div>
+          </div>
+
+          <div
+            style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap"
+          >
+            <button class="btn" @click="setMode('base')">Modo: Base</button>
+            <button class="btn" @click="setMode('fat-loss')">
+              Acelerar Emagrecimento
+            </button>
+            <button class="btn" @click="setMode('mass')">
+              Foco Massa Magra
+            </button>
+          </div>
+        </section>
+
+        <!-- Workout card -->
+        <section class="card">
+          <strong>Treino Semanal (academia)</strong>
+          <p class="muted">6x/semana — 06:30 (Seg–Sex) • Sábado: Cardio leve</p>
+          <div class="workout" style="margin-top: 8px">
+            <div v-for="(w,i) in workoutPlan" :key="i">
+              <strong>{{ w.day }} — {{ w.title }}</strong>
+              <div class="small" style="margin-bottom: 6px">
+                Cardio: {{ w.cardio }}
+              </div>
+              <div v-for="ex in w.ex" :key="ex" class="ex">
+                <div>{{ ex }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 8px" class="small">
+            Whey: <strong>30g</strong> pós-treino • Creatina:
+            <strong>5g/dia</strong> (recomendo 3g pré + 2g pós)
+          </div>
+        </section>
+
+        <!-- Supplements & checklist -->
+        <section class="card">
+          <strong>Suplementação & Checklist</strong>
+          <ul class="muted" style="margin: 8px 0; padding-left: 18px">
+            <li><strong>05:45</strong> — Creatina 5g (pré)</li>
+            <li><strong>07:45</strong> — Whey 30g (pós)</li>
+            <li>Mantenha 2,5–3L água/dia • Albumina à noite (opcional)</li>
+          </ul>
+
+          <div style="margin-top: 8px">
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <label class="checkbox"
+                ><input type="checkbox" v-model="checks.pre" /> Pré-treino
+                tomado</label
+              >
+              <label class="checkbox"
+                ><input type="checkbox" v-model="checks.work" /> Treino
+                concluído</label
+              >
+              <label class="checkbox"
+                ><input type="checkbox" v-model="checks.whey" /> Whey
+                pós-treino</label
+              >
+              <label class="checkbox"
+                ><input type="checkbox" v-model="checks.alim" /> Almoço
+                consumido</label
+              >
+              <label class="checkbox"
+                ><input type="checkbox" v-model="checks.crea" /> Creatina
+                (dia)</label
+              >
+              <label class="checkbox"
+                ><input type="checkbox" v-model="checks.sono" /> Sono
+                7–8h</label
+              >
+            </div>
+          </div>
+        </section>
+
+        <!-- Footer card -->
+        <section class="card">
+          <strong>Instruções rápidas</strong>
+          <p class="muted" style="margin: 8px 0">
+            Coloque os arquivos abaixo na raiz do site (ou em /public para
+            Vite). Suba em HTTPS. Substitua /icons/*.png por seus ícones.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button class="btn" @click="installPWA" v-if="deferredPrompt">
+              Instalar PWA
+            </button>
+            <button class="btn" @click="clearChecks">Limpar checklist</button>
+          </div>
+          <div style="margin-top: 10px" class="muted">
+            Versão PWA mínima — offline básico e cache do shell.
+          </div>
+        </section>
+      </main>
+
+      <footer class="small">
+        Planner pronto para PWA • Substitua ícones e adapte conteúdo conforme
+        preferir.
+      </footer>
+    </div>
+
+    <!-- Vue 3 (CDN) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+    <script>
+      const { createApp, ref, reactive } = Vue;
+
+      createApp({
+        setup() {
+          // Meal data (P, C, F) and computed kcal
+          const meals = reactive([
+            {
+              id: "pre",
+              title: "05:45 — Pré-treino",
+              items: [
+                "1 banana (80g)",
+                "15g aveia",
+                "1 café preto",
+                "Creatina 3–5g",
+              ],
+              P: 4,
+              C: 30,
+              F: 1,
+              get kcal() {
+                return this.P * 4 + this.C * 4 + this.F * 9;
+              },
+            },
+            {
+              id: "post",
+              title: "07:45 — Pós-treino",
+              items: ["Whey 30g", "1 banana", "200ml água"],
+              P: 30,
+              C: 25,
+              F: 2,
+              get kcal() {
+                return this.P * 4 + this.C * 4 + this.F * 9;
+              },
+            },
+            {
+              id: "lunch",
+              title: "12:30 — Almoço",
+              items: [
+                "150g frango grelhado",
+                "100g arroz integral",
+                "80g feijão",
+                "salada",
+                "1c.sopa azeite",
+              ],
+              P: 45,
+              C: 45,
+              F: 12,
+              get kcal() {
+                return this.P * 4 + this.C * 4 + this.F * 9;
+              },
+            },
+            {
+              id: "snack",
+              title: "15:30 — Lanche",
+              items: ["Iogurte natural 150g", "15g aveia", "10g castanhas"],
+              P: 14,
+              C: 22,
+              F: 10,
+              get kcal() {
+                return this.P * 4 + this.C * 4 + this.F * 9;
+              },
+            },
+            {
+              id: "dinner",
+              title: "19:00 — Jantar",
+              items: [
+                "150g peixe",
+                "100g batata doce",
+                "legumes",
+                "1c.sopa azeite",
+              ],
+              P: 35,
+              C: 25,
+              F: 12,
+              get kcal() {
+                return this.P * 4 + this.C * 4 + this.F * 9;
+              },
+            },
+            {
+              id: "ceia",
+              title: "22:00 — Ceia",
+              items: ["150g iogurte ou 100g cottage", "1c.chia"],
+              P: 12,
+              C: 6,
+              F: 4,
+              get kcal() {
+                return this.P * 4 + this.C * 4 + this.F * 9;
+              },
+            },
+          ]);
+
+          // Workout plan
+          const workoutPlan = [
+            {
+              day: "Segunda",
+              title: "Peito e Tríceps",
+              cardio: "15min esteira inclinada",
+              ex: [
+                "Supino reto — 4x10",
+                "Supino inclinado — 4x12",
+                "Crucifixo máquina — 3x15",
+                "Tríceps corda — 3x12",
+                "Tríceps testa — 3x10",
+              ],
+            },
+            {
+              day: "Terça",
+              title: "Pernas A (quadríceps)",
+              cardio: "—",
+              ex: [
+                "Agachamento — 4x10",
+                "Leg Press — 4x12",
+                "Cadeira extensora — 3x12",
+                "Cadeira abdutora — 3x15",
+                "Panturrilha — 4x20",
+              ],
+            },
+            {
+              day: "Quarta",
+              title: "Costas e Bíceps",
+              cardio: "25min bike/esteira",
+              ex: [
+                "Puxada frente — 4x10",
+                "Remada baixa — 4x12",
+                "Remada unilateral — 3x12",
+                "Rosca direta — 3x10",
+                "Rosca alternada — 3x12",
+              ],
+            },
+            {
+              day: "Quinta",
+              title: "Ombros e Abdômen",
+              cardio: "—",
+              ex: [
+                "Desenvolvimento halteres — 4x10",
+                "Elevação lateral — 3x12",
+                "Elevação frontal — 3x12",
+                "Remada alta — 3x10",
+                "Prancha/abdominais — 3 séries",
+              ],
+            },
+            {
+              day: "Sexta",
+              title: "Pernas B (posterior)",
+              cardio: "—",
+              ex: [
+                "Stiff — 4x10",
+                "Cadeira flexora — 4x12",
+                "Agachamento sumô — 3x12",
+                "Glúteo máquina — 3x12",
+                "Panturrilha sentado — 4x15",
+              ],
+            },
+            {
+              day: "Sábado",
+              title: "Cardio leve (tarde/noite)",
+              cardio: "40–50min bike/caminhada",
+              ex: ["Atividade leve, sem sobrecarga"],
+            },
+          ];
+
+          // checklist reactive
+          const checks = reactive({
+            pre: false,
+            work: false,
+            whey: false,
+            alim: false,
+            crea: false,
+            sono: false,
+          });
+
+          // PWA install prompt
+          const deferredPrompt = ref(null);
+          window.addEventListener("beforeinstallprompt", (e) => {
+            e.preventDefault();
+            deferredPrompt.value = e;
+          });
+
+          // functions
+          function exportJSON() {
+            const payload = {
+              meals: meals.map((m) => ({
+                id: m.id,
+                title: m.title,
+                P: m.P,
+                C: m.C,
+                F: m.F,
+                kcal: m.kcal,
+                items: m.items,
+              })),
+              workoutPlan,
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], {
+              type: "application/json",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "planner.json";
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+
+          function setMode(mode) {
+            if (mode === "fat-loss") {
+              // reduce carbs ~10% across meals (quick adjustment)
+              meals.forEach((m) => (m.C = Math.max(0, Math.round(m.C * 0.9))));
+              alert(
+                "Modo Acelerar Emagrecimento ativado (carboidratos reduzidos ~10%)"
+              );
+            } else if (mode === "mass") {
+              meals.forEach((m) => (m.P = m.P + Math.round(m.P * 0.08)));
+              alert("Modo Massa Magra ativado (proteína aumentada ~8%)");
+            } else {
+              location.reload(); // quick reset
+            }
+          }
+
+          function installPWA() {
+            if (!deferredPrompt.value)
+              return alert(
+                "Instalação não disponível no momento. Abra pelo navegador no dispositivo e aguarde o prompt."
+              );
+            deferredPrompt.value.prompt();
+            deferredPrompt.value.userChoice.then(
+              () => (deferredPrompt.value = null)
+            );
+          }
+
+          function clearChecks() {
+            Object.keys(checks).forEach((k) => (checks[k] = false));
+          }
+
+          // service worker registration
+          if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+              navigator.serviceWorker
+                .register("/sw.js")
+                .then((reg) => {
+                  // console.log('SW registrado', reg);
+                })
+                .catch((err) => {
+                  // console.warn('SW registration failed', err);
+                });
+            });
+          }
+
+          return {
+            meals,
+            workoutPlan,
+            checks,
+            exportJSON,
+            setMode,
+            installPWA,
+            clearChecks,
+            deferredPrompt,
+          };
+        },
+      }).mount("#app");
+    </script>
   </body>
 </html>
